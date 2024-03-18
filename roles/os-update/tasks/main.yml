@@ -55,8 +55,9 @@
 
 - name: Send notification with auth header
   ansible.builtin.uri:
-    url: "https://ntfy.sh/{{ ntfy_channel }}"
+    url: "https://notify.borgardt.me/semaphore"
     user: "semaphore"
     password: "{{ NTFY_AUTH }}"
+    force_basic_auth: yes
     method: POST
     body: "{{ inventory_hostname }} os-update completed"
