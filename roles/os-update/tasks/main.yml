@@ -3,6 +3,11 @@
   ansible.builtin.apt:
     update_cache: yes
 
+- name: set ansible_fact for pending reboot
+  ansible.builtin.set_fact:
+    ansible_facts:
+      pending_reboot: "{{ lookup('file', '/var/run/reboot-required', errors='ignore') | bool }}"
+
 - name: Reboot the system if required
   ansible.builtin.reboot:
     reboot_timeout: 600
