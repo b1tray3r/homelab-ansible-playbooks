@@ -1,4 +1,57 @@
 ---
-- name: debug
-  debug:
-    msg: "This is a debug task"
+- name: Run the equivalent of "apt-get update" as a separate step
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Reboot the system if required
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    connect_timeout: 600
+  when: ansible_facts['pending_reboot'] | bool
+
+- name: Wait for the system to come back online
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 600
+    sleep: 5
+    delay: 5
+    timeout: 600
+  when: ansible_facts['pending_reboot'] | bool
+
+- name: Upgrade the OS (apt-get dist-upgrade)
+  ansible.builtin.apt:
+    upgrade: dist
+
+- name: Reboot the system if required
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    connect_timeout: 600
+  when: ansible_facts['pending_reboot'] | bool
+
+- name: Wait for the system to come back online
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 600
+    sleep: 5
+    delay: 5
+    timeout: 600
+  when: ansible_facts['pending_reboot'] | bool
+
+- name: Remove old kernels
+  ansible.builtin.apt:
+    autoremove: yes
+    purge: yes
+    force_apt_get: yes
+    dpkg_options: "force-confdef,force-confold"
+    state: purged
+    name: "linux-image-*"
+
+- name: Clean up the apt cache
+  ansible.builtin.apt:
+    autoclean: yes
+
+- name: Send notification with auth header
+  ansible.builtin.uri:
+    url: "https://ntfy.sh/{{ ntfy_channel }}"
+    user: "semaphore"
+    password: "{{ NTFY_AUTH }}"
+    method: POST
+    body: "{{ inventory_hostname }} os-update completed"
