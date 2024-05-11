@@ -1,0 +1,34 @@
+---
+- name: Run the equivalent of "apt-get update" as a separate step
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: set ansible_fact for pending reboot
+  ansible.builtin.set_fact:
+    ansible_facts:
+      pending_reboot: "{{ lookup('file', '/var/run/reboot-required', errors='ignore') | bool }}"
+
+- name: Remove old kernels
+  ansible.builtin.apt:
+    autoremove: yes
+    purge: yes
+    force_apt_get: yes
+    dpkg_options: "force-confdef,force-confold"
+    state: absent
+    name: "linux-image-*"
+
+- name: Clean up the apt cache
+  ansible.builtin.apt:
+    autoclean: yes
+
+- name: Send notification to ntfy channel
+  delegate_to: localhost
+  become: false
+  ansible.builtin.uri:
+    url: "https://notify.borgardt.me/{{ ntfy_channel }}"
+    user: semaphore
+    password: "{{ NTFY_AUTH }}"
+    method: POST
+    force_basic_auth: true
+    body: "{{ inventory_hostname }} needs a reboot after os update"
+  when: ansible_facts['pending_reboot'] | bool
