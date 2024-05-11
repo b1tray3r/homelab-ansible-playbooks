@@ -1,0 +1,36 @@
+---
+- hosts: localhost
+  become: yes
+  connection: local
+
+  tasks:
+    - name: add the semaphore user
+      ansible.builtin.user:
+        name: semaphore
+        state: present
+        shell: /bin/bash
+        create_home: yes
+        home: /home/semaphore
+        password: "{{ SEMAPHORE_PASSWORD | password_hash('sha512') }}"
+        update_password: on_create
+
+    - name: create the .ssh directory for the semaphore user
+      ansible.builtin.file:
+        path: /home/semaphore/.ssh
+        state: directory
+        owner: semaphore
+        group: semaphore
+        mode: "0700"
+
+    - name: install the public key for the semaphore user
+      ansible.builtin.copy:
+        src: semaphore-user-key.pub
+        dest: /home/semaphore/.ssh/authorized_keys
+        owner: semaphore
+        group: semaphore
+
+    - name: add the user to the sudoers file
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        line: "semaphore ALL=(ALL) NOPASSWD: ALL"
+        validate: "/usr/sbin/visudo -cf %s"
