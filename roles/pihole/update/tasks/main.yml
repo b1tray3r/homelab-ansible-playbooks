@@ -1,0 +1,17 @@
+---
+- name: update pihole
+  ansible.builtin.command: pihole -up
+
+- name: update pihole gravity
+  ansible.builtin.command: pihole -g
+
+- name: Send notification to ntfy channel
+  delegate_to: localhost
+  become: false
+  ansible.builtin.uri:
+    url: "https://notify.borgardt.me/{{ ntfy_channel }}"
+    user: semaphore
+    password: "{{ NTFY_AUTH }}"
+    method: POST
+    force_basic_auth: true
+    body: "{{ inventory_hostname }} - pihole update completed"

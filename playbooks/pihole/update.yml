@@ -1,0 +1,5 @@
+---
+- hosts: pve.a.borgardt.me
+  become: yes
+  roles:
+    - pihole/update
