@@ -1,0 +1,89 @@
+---
+- name: import pip role
+  import_role:
+    name: geerlingguy.pip
+
+- name: import docker role
+  import_role:
+    name: geerlingguy.docker
+
+- name: Create the proxy network
+  docker_network:
+    name: "{{ TRAEFIK_PROXY_NETWORK }}"
+    attachable: true
+
+- name: Create a volume for the traefik letsencrypt storage
+  docker_volume:
+    name: "{{ TRAEFIK_LETSENCRYPT_VOLUME }}"
+  register: traefik_letsencrypt_volume
+
+- name: Set labels
+  set_fact:
+    traefik_labels: "{{ traefik_labels | default({}) | combine ({ item.key : item.value }) }}"
+  with_items:
+    - { "key": "traefik.enable", "value": "true" }
+    - {
+        "key": "traefik.docker.network",
+        "value": "{{ TRAEFIK_PROXY_NETWORK }}",
+      }
+    - {
+        "key": "traefik.http.routers.{{ TRAEFIK_PROXY_ID }}-secure.entrypoints",
+        "value": "websecure",
+      }
+    - {
+        "key": "traefik.http.routers.{{ TRAEFIK_PROXY_ID }}-secure.tls",
+        "value": "true",
+      }
+    - {
+        "key": "traefik.http.routers.{{ TRAEFIK_PROXY_ID }}-secure.tls.certresolver",
+        "value": "letsencrypt",
+      }
+    - {
+        "key": "traefik.http.routers.{{ TRAEFIK_PROXY_ID }}-secure.rule",
+        "value": "Host(`{{ TRAEFIK_PROXY_HOST }}`)",
+      }
+    - {
+        "key": "traefik.http.routers.{{ TRAEFIK_PROXY_ID }}-secure.service",
+        "value": "api@internal",
+      }
+    - {
+        "key": "traefik.http.routers.{{ TRAEFIK_PROXY_ID }}-secure.tls.options",
+        "value": "default",
+      }
+
+- name: debug
+  debug:
+    var: TRAEFIK_ENABLE_SSO
+
+- name: Add authelia middleware
+  set_fact:
+    traefik_labels: "{{ traefik_labels | combine({ 'traefik.http.middlewares.' + AUTHELIA_PROXY_ID + '-secure.forwardauth.address': 'http://authelia:9091/api/verify?rd=https://{{ TRAEFIK_PROXY_HOST }}' }) }}"
+
+- name: touch the acme.json file
+  file:
+    path: "{{ traefik_letsencrypt_volume.volume.Mountpoint }}/acme.json"
+    state: touch
+    mode: 0600
+
+- name: Start the traefik container
+  docker_container:
+    name: traefik
+    image: traefik:latest
+    pull: yes
+    command: "{{ TRAEFIK_COMMAND }}"
+    state: started
+    restart_policy: always
+    env: "{{ TRAEFIK_ENVIRONMENT }}"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - "{{ traefik_letsencrypt_volume.volume.Mountpoint }}/acme.json:/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    network_mode: default
+    networks_cli_compatible: true
+    container_default_behavior: no_defaults
+    networks:
+      - name: "{{ TRAEFIK_PROXY_NETWORK }}"
+    labels: "{{ traefik_labels }}"
