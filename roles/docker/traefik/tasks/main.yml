@@ -53,7 +53,7 @@
 
 - name: Add authelia middleware
   set_fact:
-    traefik_labels: "{{ traefik_labels | combine({ 'traefik.http.middlewares.' + AUTHELIA_PROXY_ID + '-secure.forwardauth.address': 'http://authelia:9091/api/verify?rd=https://{{ TRAEFIK_PROXY_HOST }}' }) }}"
+    traefik_labels: "{{ traefik_labels | combine({ 'traefik.http.middlewares.' + AUTHELIA_PROXY_ID + '-secure.forwardauth.address': 'http://authelia:9091/api/verify?rd=https://TRAEFIK_PROXY_HOST' }) }}"
   when: TRAEFIK_ENABLE_SSO | bool | default(false)
 
 - name: debug traefik labels
