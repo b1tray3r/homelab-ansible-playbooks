@@ -60,7 +60,7 @@
         "value": "authelia-secure",
       }
     - {
-        "key": "traefik.http.middlewares.{{ AUTHELIA_PROXY_ID }}-secure.forwardauth.address",
+        "key": "traefik.http.middlewares.{{ TRAEFIK_PROXY_ID }}-secure.forwardauth.address",
         "value": "http://proxy.borgardt.me/api/verify?rd=https://{{ TRAEFIK_PROXY_HOST }}",
       }
   when: TRAEFIK_ENABLE_SSO | bool | default(false)
